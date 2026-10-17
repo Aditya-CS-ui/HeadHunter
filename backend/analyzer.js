@@ -2,6 +2,7 @@
 //   content-security-policy: default-src 'self'
 //   strict-transport-security: max-age=31536000
 // into a Map of lowercase header name -> value.
+// Repeated headers (such as Set-Cookie) are stored as arrays.
 function parseHeaders(text) {
   const headers = new Map();
   const lines = text.split(/\r?\n/);
@@ -14,7 +15,15 @@ function parseHeaders(text) {
     const name = trimmed.slice(0, index).trim().toLowerCase();
     const value = trimmed.slice(index + 1).trim();
 
-    if (name) headers.set(name, value);
+    if (!name) continue;
+
+    if (name === "set-cookie") {
+      const existing = headers.get(name) || [];
+      existing.push(value);
+      headers.set(name, existing);
+    } else {
+      headers.set(name, value);
+    }
   }
 
   return headers;
@@ -22,12 +31,14 @@ function parseHeaders(text) {
 
 // Each rule describes one security header and how to judge it.
 // "weight" is how many points the header is worth in the score.
+// "impact" is a fixed risk weight (1 to 10) used only for ranking.
 const RULES = [
   {
     header: "Content-Security-Policy",
     key: "content-security-policy",
     weight: 25,
     severity: "high",
+    impact: 9,
     check(value) {
       if (value.includes("unsafe-inline") || value.includes("unsafe-eval")) {
         return { status: "weak", message: "CSP allows 'unsafe-inline' or 'unsafe-eval', which weakens XSS protection." };
@@ -43,6 +54,7 @@ const RULES = [
     key: "strict-transport-security",
     weight: 20,
     severity: "high",
+    impact: 8,
     check(value) {
       const match = value.match(/max-age=(\d+)/i);
       if (!match) {
@@ -59,6 +71,7 @@ const RULES = [
     key: "x-content-type-options",
     weight: 15,
     severity: "medium",
+    impact: 6,
     check(value) {
       if (value.toLowerCase() !== "nosniff") {
         return { status: "weak", message: "X-Content-Type-Options should be set to 'nosniff'." };
@@ -71,6 +84,7 @@ const RULES = [
     key: "referrer-policy",
     weight: 15,
     severity: "low",
+    impact: 3,
     check(value) {
       const unsafe = ["unsafe-url", "no-referrer-when-downgrade"];
       if (unsafe.includes(value.toLowerCase())) {
@@ -84,6 +98,7 @@ const RULES = [
     key: "x-frame-options",
     weight: 25,
     severity: "medium",
+    impact: 7,
     check(value, headers) {
       const csp = headers.get("content-security-policy") || "";
       if (csp.includes("frame-ancestors")) {
@@ -100,6 +115,85 @@ const RULES = [
     }
   }
 ];
+
+// Extra checks that do not change the score.
+// They add findings for cookies and software version disclosure.
+const EXTRA_CHECKS = [
+  {
+    header: "Set-Cookie",
+    severity: "medium",
+    impact: 7,
+    run(headers) {
+      const cookies = headers.get("set-cookie");
+      if (!cookies) return [];
+
+      const findings = [];
+      cookies.forEach((cookie) => {
+        const name = cookie.split("=")[0].trim() || "unnamed";
+        const flags = cookie.toLowerCase();
+        const problems = [];
+
+        if (!flags.includes("secure")) problems.push("Secure");
+        if (!flags.includes("httponly")) problems.push("HttpOnly");
+        if (!flags.includes("samesite")) problems.push("SameSite");
+
+        if (problems.length > 0) {
+          findings.push({
+            header: "Set-Cookie",
+            status: "weak",
+            severity: "medium",
+            impact: 7,
+            message: `Cookie '${name}' is missing the ${problems.join(", ")} flag${problems.length > 1 ? "s" : ""}.`
+          });
+        }
+      });
+      return findings;
+    }
+  },
+  {
+    header: "Server / X-Powered-By",
+    severity: "low",
+    impact: 2,
+    run(headers) {
+      const findings = [];
+      for (const key of ["server", "x-powered-by"]) {
+        const value = headers.get(key);
+        // A version number such as "Apache/2.4.41" or "PHP/7.4.3" reveals software details
+        if (typeof value === "string" && /\d+\.\d+/.test(value)) {
+          findings.push({
+            header: key === "server" ? "Server" : "X-Powered-By",
+            status: "weak",
+            severity: "low",
+            impact: 2,
+            message: `The ${key} header reveals software version information ('${value}'). Remove or hide it.`
+          });
+        }
+      }
+      return findings;
+    }
+  }
+];
+
+// Severity gives a base value, and impact adds the header-specific risk.
+// Status scales it: "missing" is worse than "weak".
+const SEVERITY_BASE = { high: 30, medium: 20, low: 10 };
+const STATUS_MULTIPLIER = { missing: 1.0, weak: 0.7 };
+
+function riskScore(finding) {
+  const base = SEVERITY_BASE[finding.severity] || 10;
+  const statusFactor = STATUS_MULTIPLIER[finding.status] || 0.7;
+  return Math.round((base + finding.impact * 3) * statusFactor);
+}
+
+// Adds riskScore and priority to each finding, sorted highest risk first.
+// Priority 1 is the most urgent. The security score is not affected.
+function rankFindings(findings) {
+  const ranked = findings
+    .map((f) => ({ ...f, riskScore: riskScore(f) }))
+    .sort((a, b) => b.riskScore - a.riskScore);
+
+  return ranked.map((f, i) => ({ ...f, priority: i + 1 }));
+}
 
 // Main entry point. Takes raw header text, returns the analysis.
 function analyzeHeaders(text) {
@@ -132,15 +226,21 @@ function analyzeHeaders(text) {
         header: rule.header,
         status: result.status,
         severity: rule.severity,
+        impact: rule.impact,
         message: result.message
       });
     }
   }
 
+  // Extra checks add findings but do not affect the score
+  for (const check of EXTRA_CHECKS) {
+    findings.push(...check.run(headers));
+  }
+
   return {
     score: Math.round((earned / total) * 100),
     scoreNote: "Estimate based on header checks only",
-    findings
+    findings: rankFindings(findings)
   };
 }
 

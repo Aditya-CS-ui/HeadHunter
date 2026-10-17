@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 // Parse JSON request bodies
 app.use(express.json({ limit: "100kb" }));
 
-// Serve the frontend folder (Nitin's files)
+// Serve Nitin's frontend (index.html, css/, js/, assets/)
 app.use(express.static(path.join(__dirname, "../frontend/headerhunter-frontend")));
 
 // GET /api/samples: returns built-in sample header sets
