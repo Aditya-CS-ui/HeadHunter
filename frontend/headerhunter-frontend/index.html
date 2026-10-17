@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HeaderHunter — practical security header analysis for developers.">
+  <title>HeaderHunter | Security Header Analysis</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="#" aria-label="HeaderHunter home">
+        <span class="brand-symbol" aria-hidden="true">
+          <img src="assets/logo-mark.png" alt="">
+        </span>
+        <span class="brand-wordmark">Header<span>Hunter</span></span>
+      </a>
+
+      <div class="header-divider"></div>
+      <p class="header-tagline">Your security should be prioritized</p>
+
+      <nav class="main-nav" aria-label="Primary navigation">
+        <a class="active" href="#scanner">Scanner</a>
+        <a href="#about">About</a>
+        <a href="#docs">Documentation</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="scanner">
+      <div class="eyebrow"><span></span> HTTP SECURITY HEADER ANALYZER</div>
+      <h1>Understand your website's<br><strong>security posture.</strong></h1>
+      <p class="hero-copy">
+        Paste an HTTP response, check its security headers, and get practical remediation guidance.
+      </p>
+
+      <form class="scan-form" id="scanForm">
+        <label class="headers-field">
+          <span class="field-label">HTTP RESPONSE HEADERS</span>
+          <textarea id="headersInput" rows="12" placeholder="Paste HTTP response headers here..." spellcheck="false" required></textarea>
+        </label>
+
+        <div class="sample-controls">
+          <div class="sample-picker">
+            <label for="sampleSelect">Sample</label>
+            <select id="sampleSelect">
+              <option value="">Loading samples...</option>
+            </select>
+          </div>
+          <button id="loadSampleBtn" class="secondary-btn" type="button" disabled>Load sample</button>
+          <button id="analyzeBtn" class="primary-btn" type="submit">
+            <span class="btn-label">Analyze</span>
+            <span class="btn-arrow" aria-hidden="true">→</span>
+          </button>
+        </div>
+      </form>
+      <p class="scan-status" id="scanStatus" aria-live="polite"></p>
+    </section>
+
+    <section class="dashboard hidden" id="dashboard" aria-label="Security report">
+      <div class="report-toolbar">
+        <div>
+          <span class="report-label">SECURITY REPORT</span>
+          <h2>Header analysis</h2>
+        </div>
+        <div class="report-meta">
+          <span class="live-dot"></span>
+          <span>Analysis complete</span>
+        </div>
+      </div>
+
+      <div class="report-grid">
+        <section class="card score-card">
+          <div class="score-main">
+            <div class="score-ring" id="scoreRing">
+              <div class="score-value">
+                <strong id="scoreValue">0</strong><span>/100</span>
+              </div>
+            </div>
+            <div class="score-summary">
+              <span class="section-label">SECURITY SCORE</span>
+              <h3>Security posture</h3>
+              <p id="scoreNote"></p>
+            </div>
+          </div>
+        </section>
+
+        <section class="card findings-card">
+          <div class="card-header">
+            <div>
+              <span class="section-label">ACTION REQUIRED</span>
+              <h3>Findings</h3>
+            </div>
+            <span class="finding-count" id="findingCount">0</span>
+          </div>
+          <div id="findingList" class="finding-list"></div>
+        </section>
+
+        <aside class="card ai-card">
+          <div class="ai-header">
+            <div>
+              <span class="section-label">AI ASSISTANCE</span>
+              <h3>Gemma analysis</h3>
+            </div>
+            <span class="ai-badge">AI</span>
+          </div>
+          <div id="aiContent"></div>
+          <div id="aiWarning" class="ai-warning hidden" role="alert"></div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="empty-state" id="emptyState">
+      <div class="empty-line"></div>
+      <p>Paste HTTP response headers above to begin an analysis.</p>
+    </section>
+
+    <section class="about-section" id="about">
+      <div class="about-intro">
+        <span class="section-label">HOW IT WORKS</span>
+        <h2>A straightforward security review.</h2>
+        <p>HeaderHunter focuses on the controls developers can understand, verify, and improve quickly.</p>
+      </div>
+      <div class="process-list">
+        <article>
+          <span>01</span>
+          <div><h3>Inspect</h3><p>Review the HTTP response for common security headers.</p></div>
+        </article>
+        <article>
+          <span>02</span>
+          <div><h3>Evaluate</h3><p>Flag missing and potentially misconfigured protections.</p></div>
+        </article>
+        <article>
+          <span>03</span>
+          <div><h3>Explain</h3><p>Use Gemma to translate findings into practical remediation steps.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="docs-section" id="docs">
+      <span class="section-label">DOCUMENTATION</span>
+      <h2>Built for developers.</h2>
+      <p>The frontend is designed to connect to the HeaderHunter analysis API and Ollama/Gemma backend.</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div>HeaderHunter</div>
+    <div>Security header analysis for the modern web.</div>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
